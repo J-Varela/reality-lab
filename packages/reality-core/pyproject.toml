@@ -1,0 +1,22 @@
+[project]
+name = "reality-core"
+version = "0.1.0"
+description = "Scientific computing core for Hermes Reality Lab"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reality_core"]

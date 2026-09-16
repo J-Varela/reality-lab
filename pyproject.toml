@@ -1,0 +1,20 @@
+[project]
+name = "hermes-reality-lab"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = [
+    "packages/reality-core",
+    "services/api",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/reality-core/tests",
+    "services/api/tests",
+]

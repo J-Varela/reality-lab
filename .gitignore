@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# Test / lint caches
+.pytest_cache/
+.ruff_cache/
+
+# Generated experiment output
+data/generated/
+
+# Node / Next.js
+node_modules/
+.next/
+
+# Environment
+.env
+.env.local
+
+# OS/editor
+.DS_Store
+.vscode/
