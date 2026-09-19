@@ -1,38 +1,15 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 from reality_core.numerics.grid import Grid2D
 from reality_core.simulation.diffusion import (
     DiffusionConfig,
     explicit_stability_limit,
     simulate_diffusion,
 )
+from reality_core.simulation.initial_conditions import gaussian_field
 
 OUTPUT_DIR = Path("data/generated/diffusion")
-
-
-def create_hot_spot(grid: Grid2D) -> np.ndarray:
-    x = np.linspace(0.0, grid.length_x, grid.nx)
-    y = np.linspace(0.0, grid.length_y, grid.ny)
-
-    xx, yy = np.meshgrid(x, y)
-
-    center_x = grid.length_x / 2.0
-    center_y = grid.length_y / 2.0
-    sigma = 0.04
-
-    radius_squared = (xx - center_x) ** 2 + (yy - center_y) ** 2
-
-    state = np.exp(-radius_squared / (2.0 * sigma**2)).astype(np.float64)
-
-    # Fixed zero-value boundaries.
-    state[0, :] = 0.0
-    state[-1, :] = 0.0
-    state[:, 0] = 0.0
-    state[:, -1] = 0.0
-
-    return state
 
 
 def main() -> None:
@@ -52,7 +29,12 @@ def main() -> None:
 
     dt = stability_limit * 0.9
 
-    initial_state = create_hot_spot(grid)
+    initial_state = gaussian_field(
+        grid,
+        center_x=0.5,
+        center_y=0.5,
+        sigma=0.04,
+    )
 
     config = DiffusionConfig(
         alpha=alpha,
