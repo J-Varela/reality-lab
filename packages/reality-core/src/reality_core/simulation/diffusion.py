@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from reality_core.numerics.grid import Grid2D
+from reality_core.simulation.trajectory import SimulationFrame
 
 FloatArray = NDArray[np.float64]
 
@@ -32,6 +33,7 @@ class DiffusionResult:
     dt: float
     simulated_time: float
     stability_limit: float
+    frames: tuple[SimulationFrame, ...]
 
 
 def explicit_stability_limit(grid: Grid2D, alpha: float) -> float:
@@ -47,6 +49,8 @@ def simulate_diffusion(
     initial_state: FloatArray,
     grid: Grid2D,
     config: DiffusionConfig,
+    *,
+    capture_steps: tuple[int, ...] | None = None,
 ) -> DiffusionResult:
     if initial_state.shape != grid.shape:
         raise ValueError(
@@ -64,10 +68,31 @@ def simulate_diffusion(
 
     state = np.asarray(initial_state, dtype=np.float64).copy()
 
+    requested_capture_steps = set(capture_steps or ())
+
+    if any(
+        step < 0 or step > config.steps
+        for step in requested_capture_steps
+    ):
+        raise ValueError(
+            "capture_steps must lie between 0 and config.steps."
+        )
+
+    frames: list[SimulationFrame] = []
+
+    if 0 in requested_capture_steps:
+        frames.append(
+            SimulationFrame(
+                step=0,
+                time=0.0,
+                state=state.copy(),
+            )
+        )
+
     dx_squared = grid.dx**2
     dy_squared = grid.dy**2
 
-    for _ in range(config.steps):
+    for step in range(1, config.steps +1):
         laplacian_x = (
             state[1:-1, 2:] - 2.0 * state[1:-1, 1:-1] + state[1:-1, :-2]
         ) / dx_squared
@@ -84,10 +109,20 @@ def simulate_diffusion(
 
         state = next_state
 
+        if step in requested_capture_steps:
+            frames.append(
+                SimulationFrame(
+                    step=step,
+                    time=step * config.dt,
+                    state=state.copy(),
+                )
+            )
+
     return DiffusionResult(
         final_state=state,
         steps=config.steps,
         dt=config.dt,
         simulated_time=config.steps * config.dt,
         stability_limit=stability_limit,
+        frames=tuple(frames),
     )
