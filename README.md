@@ -49,4 +49,49 @@ refine the search region
     ↓
 repeat
 
+```
+
+
+## Scientific ML — Surrogate Optimization
+
+Reality Lab extends its diffusion simulator with
+surrogate-assisted optimization and uncertainty-aware
+ensemble search.
+
+### Benchmark Results
+
+We compared three strategies across 20 random seeds,
+using 12 simulator evaluations per strategy.
+
+| Strategy | Mean Best Absolute Error |
+|---|---:|
+| Random Search | 0.00613846 |
+| RBF Surrogate | **0.00125978** |
+| Ensemble Surrogate | 0.00147177 |
+
+The RBF surrogate achieved approximately **79.5% lower
+mean error** than random search in this experiment.
+
+### Learning Curves
+
+![Scientific ML Learning Curves](experiments/discovery/results/learning_curves.png)
+
+The graph shows best-so-far absolute spread error
+averaged across 20 random seeds.
+
+The methods use equal simulation budgets, but their
+initial sampling strategies differ. These results
+do not isolate surrogate guidance from initialization.
+
+### Reproduce the Experiment
+
+Run from the repository root:
+
+```bash
+PYTHONPATH=packages/reality-core/src \
+uv run python experiments/discovery/benchmark_learning_curves.py
+```
+
+The experiment saves a CSV and PNG to
+`experiments/discovery/results/`.
 
