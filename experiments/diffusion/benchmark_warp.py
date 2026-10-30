@@ -70,18 +70,33 @@ def benchmark(initial, device):
     synchronize(device)
 
     durations = []
+    cuda_durations = []
 
     for _ in range(REPEATS):
-        # Reset the initial condition for each trial.
         a = wp.array(initial, dtype=wp.float32, device=device)
         b = wp.empty_like(a)
         synchronize(device)
 
-        start = perf_counter()
-        a, b = run_steps(a, b, size, device, STEPS)
-        synchronize(device)
+        if device == "cuda:0":
+            with wp.ScopedDevice(device):
+                start_event = wp.Event(enable_timing=True)
+                end_event = wp.Event(enable_timing=True)
+
+                start = perf_counter()
+                wp.record_event(start_event)
+                a, b = run_steps(a, b, size, device, STEPS)
+                wp.record_event(end_event)
+                synchronize(device)
+                cuda_durations.append(wp.get_event_elapsed_time(start_event, end_event))
+        else:
+            start = perf_counter()
+            a, b = run_steps(a, b, size, device, STEPS)
+            synchronize(device)
 
         durations.append((perf_counter() - start) * 1000)
+
+    if cuda_durations:
+        print(f"CUDA event median ({size}x{size}): {median(cuda_durations):.3f} ms")
 
     return median(durations), a.numpy()
 
@@ -167,7 +182,7 @@ def main():
         print(f"  Error:   {error:.3e}")
         print()
 
-    output = Path("experiments/diffusion/warp_benchmark.csv")
+    output = Path(__file__).resolve().with_name("warp_benchmark.csv")
 
     with output.open("w", newline="") as file:
         writer = csv.DictWriter(
@@ -182,6 +197,7 @@ def main():
                 "speedup",
                 "max_error",
             ],
+            lineterminator="\n",
         )
         writer.writeheader()
         writer.writerows(results)
