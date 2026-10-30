@@ -86,6 +86,40 @@ def benchmark(initial, device):
     return median(durations), a.numpy()
 
 
+def numpy_diffusion(a, b, steps=STEPS, ratio=RATIO):
+    for _ in range(steps):
+        center = a[1:-1, 1:-1]
+
+        b[1:-1, 1:-1] = center + ratio * (
+            a[:-2, 1:-1] + a[2:, 1:-1] + a[1:-1, :-2] + a[1:-1, 2:] - 4.0 * center
+        )
+
+        a, b = b, a
+
+    return a
+
+
+def benchmark_numpy(initial):
+    # Warm up NumPy before benchmarking.
+    a = initial.copy()
+    b = initial.copy()
+    numpy_diffusion(a, b, steps=3)
+
+    durations = []
+    result = None
+
+    for _ in range(REPEATS):
+        a = initial.copy()
+        b = initial.copy()
+
+        start = perf_counter()
+        result = numpy_diffusion(a, b)
+        durations.append((perf_counter() - start) * 1000)
+
+    assert result is not None
+    return median(durations), result
+
+
 def main():
     print("REALITY LAB — NVIDIA WARP BENCHMARK")
     print(f"Steps: {STEPS} | Repeats: {REPEATS}")
@@ -102,17 +136,21 @@ def main():
         ] = 1.0
 
         cpu_ms, cpu_result = benchmark(initial, "cpu")
+        numpy_ms, numpy_result = benchmark_numpy(initial)
         gpu_ms, gpu_result = benchmark(initial, "cuda:0")
 
-        np.testing.assert_allclose(cpu_result, gpu_result, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(numpy_result, gpu_result, rtol=1e-5, atol=1e-6)
 
         error = np.max(np.abs(cpu_result - gpu_result))
         speedup = cpu_ms / gpu_ms
+        numpy_speedup = numpy_ms / gpu_ms
 
         results.append(
             {
                 "grid_size": size,
                 "cells": size * size,
+                "numpy_ms": numpy_ms,
+                "gpu_vs_numpy": numpy_speedup,
                 "cpu_ms": cpu_ms,
                 "gpu_ms": gpu_ms,
                 "speedup": speedup,
@@ -123,6 +161,8 @@ def main():
         print(f"Grid: {size} x {size}")
         print(f"  CPU:     {cpu_ms:.3f} ms")
         print(f"  GPU:     {gpu_ms:.3f} ms")
+        print(f"  NumPy:   {numpy_ms:3f} ms")
+        print(f"  GPU vs NumPy: {numpy_speedup:.2f}x")
         print(f"  Speedup: {speedup:.2f}x")
         print(f"  Error:   {error:.3e}")
         print()
@@ -135,6 +175,8 @@ def main():
             fieldnames=[
                 "grid_size",
                 "cells",
+                "numpy_ms",
+                "gpu_vs_numpy",
                 "cpu_ms",
                 "gpu_ms",
                 "speedup",
