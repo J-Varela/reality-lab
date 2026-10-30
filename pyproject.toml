@@ -18,3 +18,9 @@ testpaths = [
     "packages/reality-core/tests",
     "services/api/tests",
 ]
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.11.2",
+    "warp-lang==1.18.0",
+]
