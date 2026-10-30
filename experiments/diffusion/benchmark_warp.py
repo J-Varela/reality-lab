@@ -8,9 +8,9 @@ import warp as wp
 
 wp.init()
 
-GRID_SIZES = (64, 128, 256, 512)
+GRID_SIZES = (256, 512, 1024)
 STEPS = 100
-REPEATS = 3
+REPEATS = 10
 RATIO = 0.2
 
 
