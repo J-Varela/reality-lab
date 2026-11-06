@@ -36,6 +36,25 @@ class PowerConfig:
 
 
 @dataclass(frozen=True)
+class SolarGenerationFault:
+    """A persistent reduction of available solar power after a chosen time."""
+
+    starts_at_s: float
+    remaining_fraction: float = 0.5
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.starts_at_s) or self.starts_at_s < 0:
+            raise ValueError("Fault start time must be finite and nonnegative.")
+        if (
+            not isfinite(self.remaining_fraction)
+            or not 0 <= self.remaining_fraction <= 1
+        ):
+            raise ValueError(
+                "Remaining solar fraction must be finite and within [0, 1]."
+            )
+
+
+@dataclass(frozen=True)
 class PowerTrace:
     """Energy at time points; power and energy accounting over each interval."""
 
@@ -48,11 +67,15 @@ class PowerTrace:
 
 
 def simulate_power(
-    config: PowerConfig, *, orbits: int = 3, dt_s: float = 1.0
+    config: PowerConfig,
+    *,
+    orbits: int = 3,
+    dt_s: float = 1.0,
+    solar_fault: SolarGenerationFault | None = None,
 ) -> PowerTrace:
-    """Run a healthy, always-enabled payload through repeated sunlight/eclipse.
+    """Run an always-enabled payload, optionally with a solar-generation fault.
 
-    Each orbit starts in sunlight. Environmental transitions split time steps,
+    Each orbit starts in sunlight. Environmental and fault transitions split time steps,
     including when dt_s does not divide an orbit. The ideal battery has no
     efficiency losses or rate limits. Excess generation is curtailed; demand
     that cannot be supplied by an empty battery is explicitly recorded.
@@ -65,12 +88,18 @@ def simulate_power(
     duration_s = orbits * config.orbit_period_s
     sunlight_s = config.orbit_period_s - config.eclipse_duration_s
     orbit_starts = np.arange(orbits, dtype=np.float64) * config.orbit_period_s
+    fault_edges = (
+        [solar_fault.starts_at_s]
+        if solar_fault is not None and solar_fault.starts_at_s < duration_s
+        else []
+    )
     time_s = np.unique(
         np.concatenate(
             (
                 np.arange(0.0, duration_s, dt_s),
                 orbit_starts,
                 orbit_starts + sunlight_s,
+                fault_edges,
                 [duration_s],
             )
         )
@@ -79,6 +108,10 @@ def simulate_power(
     midpoints = (time_s[:-1] + time_s[1:]) / 2.0
     sunlit = np.remainder(midpoints, config.orbit_period_s) < sunlight_s
     solar_power_w = np.where(sunlit, config.solar_power_w, 0.0)
+    if solar_fault is not None:
+        solar_power_w[midpoints >= solar_fault.starts_at_s] *= (
+            solar_fault.remaining_fraction
+        )
     load_power_w = np.full_like(
         solar_power_w, config.bus_power_w + config.payload_power_w
     )

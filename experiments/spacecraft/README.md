@@ -1,4 +1,4 @@
-# Healthy spacecraft power baseline
+# Spacecraft power experiments
 
 The first step toward an Autonomous Spacecraft Health Monitor is a healthy
 reference trace whose behavior we can explain from conservation of energy.
@@ -38,5 +38,27 @@ start/end times and battery energy from the powers applied during that interval.
 This is an ideal energy-storage model with a prescribed illumination schedule.
 It omits battery losses, charge/discharge rate limits, temperature dependence,
 attitude effects, sensor noise, and autonomous fault handling. The parameters
-are teaching examples, not measurements of an actual spacecraft. The next
-experiment can introduce one solar-generation fault against this reference.
+are teaching examples, not measurements of an actual spacecraft.
+
+## One solar-generation fault
+
+```bash
+PYTHONPATH=packages/reality-core/src uv run python experiments/spacecraft/solar_fault.py
+```
+
+This comparison runs four cycles. At minute 100, available solar generation
+falls to 50% of its healthy value. The payload remains commanded on and no
+recovery controller intervenes. Unmet demand is explicitly recorded. Healthy
+and faulty runs share the same configuration.
+
+Before the fault their histories match. Afterward, the faulty spacecraft has
+12.5 W generation against 13 W demand in sunlight, so its battery cannot
+recharge. Energy at the end of each orbit is approximately 13.50, 8.58, 1.58,
+and 0 Wh. It accumulates 5.42 Wh of unserved demand by minute 360.
+
+The plot is saved to `data/generated/spacecraft/solar_fault/solar_fault.png`.
+Fault onset splits integration intervals, including for coarse time steps.
+Tests also show that a fault injected during eclipse only changes solar
+telemetry after sunlight returns. This illustrates a limit on observability:
+the injection time is simulator ground truth, not a diagnosis available to a
+future health monitor. Detection, noisy sensors, and recovery are later steps.
