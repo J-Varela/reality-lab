@@ -61,4 +61,33 @@ Fault onset splits integration intervals, including for coarse time steps.
 Tests also show that a fault injected during eclipse only changes solar
 telemetry after sunlight returns. This illustrates a limit on observability:
 the injection time is simulator ground truth, not a diagnosis available to a
-future health monitor. Detection, noisy sensors, and recovery are later steps.
+health monitor.
+
+## Detecting a persistent solar shortfall
+
+```bash
+PYTHONPATH=packages/reality-core/src uv run python experiments/spacecraft/solar_monitor.py
+```
+
+The detector receives observed and expected solar power for each telemetry
+interval, available at the interval's end. Its interface has no fault label,
+injection time, battery truth, or simulator configuration. The experiment
+computes expected power from the known healthy sunlight schedule and adds
+seeded Gaussian sensor noise (0.5 W standard deviation) to the observed power.
+
+A residual below -5 W during expected sunlight must persist across consecutive
+intervals totaling at least 10 seconds. Healthy readings, eclipse, invalid
+readings, and telemetry gaps reset pending evidence. The first alarm is
+latched; eclipse does not erase an alarm already raised. Confirmation uses
+elapsed time, and an alarm is never backdated before telemetry arrives.
+
+For this demonstration the healthy run has no alarms; the faulty run alarms
+at 6010 seconds (100.167 minutes), 10 seconds after the injection. The runner
+uses the injection time only for scoring and plot annotations. The plot,
+including a zoom around the event, is saved under
+`data/generated/spacecraft/solar_monitor/`.
+
+These are teaching thresholds for a simple model with an exact illumination
+schedule, not calibrated operational settings. The alarm identifies solar
+underproduction, not its root cause. A sensor bias or an inaccurate prediction
+could also create a residual. Recovery and richer diagnosis are later steps.
